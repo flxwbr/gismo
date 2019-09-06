@@ -1,0 +1,5 @@
+# Target labels
+ doc-snippets
+ unittests
+# Source files and their labels
+/samwise/home/weinmueller/gismo/doc/snippets/bspline_cube.cpp
