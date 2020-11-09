@@ -26,6 +26,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0074)# CMake 3.12
+cmake_policy(SET CMP0074 NEW)
+endif()
+
 if(POLICY CMP0077)# CMake 3.13
 cmake_policy(SET CMP0077 NEW)
 endif()
@@ -118,8 +122,6 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
-include_directories(${PROJECT_BINARY_DIR})
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
@@ -135,13 +137,9 @@ unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-           "${PROJECT_SOURCE_DIR}/external"
-      "${PROJECT_SOURCE_DIR}/extensions"
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
+     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
-
-#first time
-include_directories(${GISMO_INCLUDE_DIRS})
 
 # Offer the user the choice of overriding the installation directories
 set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
@@ -152,10 +150,26 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## Extensions
 ## #################################################################
 
+if (EIGEN_USE_MKL_ALL)
+  # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+  find_package(MKL REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
+    CACHE INTERNAL "${PROJECT_NAME} include directories")
+endif()
+
+#first time
+include_directories(${GISMO_INCLUDE_DIRS})
+
 include(gsFetch)
 
 # Add externals directory
 add_subdirectory(external)
+
+if(GISMO_BUILD_UNITTESTS) # Unittests
+  add_subdirectory(unittests)
+else()
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
+endif(GISMO_BUILD_UNITTESTS)
 
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
@@ -262,13 +276,6 @@ if(GISMO_WITH_UNUM)
   #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
-if(GISMO_WITH_TRILINOS)
-  add_subdirectory(extensions/gsTrilinos)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${TRILINOS_INCLUDE_DIR})
-endif(GISMO_WITH_TRILINOS)
-
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
@@ -284,6 +291,16 @@ if(GISMO_WITH_SMESH)
 endif()
 
 #second time
+include_directories(${GISMO_INCLUDE_DIRS})
+
+if(GISMO_WITH_TRILINOS)
+  add_subdirectory(extensions/gsTrilinos)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${TRILINOS_INCLUDE_DIR})
+endif(GISMO_WITH_TRILINOS)
+
+#third time
 include_directories(${GISMO_INCLUDE_DIRS})
 
 # external inclusion paths
@@ -303,20 +320,27 @@ endif()
 ## Submodules
 ## #################################################################
 
+option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
   gismo_fetch_module(gsCompFlow)
 endif()
 
+option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
   gismo_fetch_module(gsElasticity)
 endif()
 
+option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
+option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 if(GISMO_MOTOR)
@@ -350,9 +374,9 @@ if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
 
-if(GISMO_BUILD_PVIEW)
-  add_subdirectory(plugins/gsParaview)
-endif(GISMO_BUILD_PVIEW)
+#if(GISMO_BUILD_PVIEW)
+#  add_subdirectory(plugins/gsParaview)
+#endif(GISMO_BUILD_PVIEW)
 
 if(GISMO_BUILD_RHINOPLUGINS)
   add_subdirectory(plugins/RhinoTHBSplines)
@@ -378,14 +402,8 @@ else()
 endif(GISMO_BUILD_EXAMPLES)
 
 ## #################################################################
-## Unittests
+## Misc
 ## #################################################################
-
-if(GISMO_BUILD_UNITTESTS)
-  add_subdirectory(unittests)
-else()
-  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
-endif(GISMO_BUILD_UNITTESTS)
 
 add_subdirectory(optional)
 
