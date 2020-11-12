@@ -74,6 +74,14 @@ public:
         // specifies whether the right hand side function should be
         // evaluated in parametric(true) or physical (false)
         rhs_ptr->eval_into( (paramCoef ?  md.points :  md.values[0] ), rhsVals );
+
+        if (geo.id() == 1)
+        {
+            gsMatrix<> ones;
+            ones.setOnes(rhsVals.rows(),quNodes.cols());
+            //rhsVals *= (ones-md.points).cwiseProduct(md.points);
+        }
+
         
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );

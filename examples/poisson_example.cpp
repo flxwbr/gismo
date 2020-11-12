@@ -30,33 +30,24 @@ int main(int argc, char *argv[])
 
     //! [Function data]
     // Define source function
-    gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
-                              "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",2);
-    // For homogeneous term, we can use this (last argument is the dimension of the domain)
-    //gsConstantFunction<> f(0.0, 0.0, 2);
-
-    // Define exact solution (optional)
-    gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
-                              "sin(pi*x*3)*sin(pi*y*4)-pi/10",2);
+    gsFunctionExpr<> laplace ("16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
 
     // Print out source function and solution
-    gsInfo<<"Source function "<< f << "\n";
-    gsInfo<<"Exact solution "<< g <<"\n\n";
+    gsInfo<<"Source function "<< laplace << "\n";
+    gsInfo<<"Exact solution "<< solVal <<"\n\n";
     //! [Function data]
 
     //! [Geometry data]
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patches;
-    // Create 4 (2 x 2) patches of squares:
-    //
-    // Square/patch 0 is in lower left  corner
-    // Square/patch 1 is in upper left  corner
-    // Square/patch 2 is in lower right corner
-    // Square/patch 3 is in upper right corner
-    //
-    // The last argument scale the squares such that we
-    // get the unit square as domain.
-    patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+
+    gsFileData<> fd("planar/two_squares.xml");
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    fd.getId(0, patches); // id=0: Multipatch domain
+    patches.computeTopology();
     gsInfo << "The domain is a "<< patches <<"\n";
     //! [Geometry data]
 
@@ -78,46 +69,19 @@ int main(int argc, char *argv[])
 
     //! [Boundary conditions]
     gsBoundaryConditions<> bcInfo;
-    // Every patch with a boundary need to be specified. In this
-    // there are in total 8 sides (two for each patch)
-
-    // Dirichlet Boundary conditions
-    // First argument is the patch number
-    bcInfo.addCondition(0, boundary::west,  condition_type::dirichlet, &g);
-    bcInfo.addCondition(1, boundary::west,  condition_type::dirichlet, &g);
-
-    bcInfo.addCondition(1, boundary::north, condition_type::dirichlet, &g);
-    bcInfo.addCondition(3, boundary::north, condition_type::dirichlet, &g);
-
-    // Neumann Boundary conditions
-    gsFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)",2);
-    gsFunctionExpr<> hSouth("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)",2);
-
-    bcInfo.addCondition(3, boundary::east,  condition_type::neumann, &hEast);
-    bcInfo.addCondition(2, boundary::east,  condition_type::neumann, &hEast);
-
-    bcInfo.addCondition(0, boundary::south, condition_type::neumann, &hSouth);
-    bcInfo.addCondition(2, boundary::south, condition_type::neumann, &hSouth);
-    //! [Boundary conditions]
-
-    /*
-      //Alternatively: You can automatically create Dirichlet boundary
-      //conditions using one function (the exact solution) for all
-      //boundaries like this:
-
     for (gsMultiPatch<>::const_biterator
              bit = patches.bBegin(); bit != patches.bEnd(); ++bit)
     {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
+        bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
     }
-    */
+
 
     //! [Refinement]
     // Copy basis from the geometry
     gsMultiBasis<> refine_bases( patches );
 
     // Number for h-refinement of the computational (trial/test) basis.
-    const int numRefine  = 2;
+    const int numRefine  = 6;
 
     // Number for p-refinement of the computational (trial/test) basis.
     const int degree     = 2;
@@ -149,9 +113,9 @@ int main(int argc, char *argv[])
     // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
     //       (This option might not be available yet)
     //! [Assemble]
-    gsPoissonAssembler<real_t> assembler(patches,refine_bases,bcInfo,f,
+    gsPoissonAssembler<real_t> assembler(patches,refine_bases,bcInfo,laplace,
                                        //dirichlet::elimination, iFace::glue);
-                                         dirichlet::nitsche    , iFace::glue);
+                                         dirichlet::nitsche    , iFace::none);
 
     // Generate system matrix and load vector
     gsInfo<< "Assembling...\n";
@@ -181,12 +145,8 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(sol, "poisson2d", 1000);
-        const gsField<> exact( assembler.patches(), g, false );
+        const gsField<> exact( assembler.patches(), solVal, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
-
-        // Run paraview
-        gsFileManager::open("poisson2d.pvd");
-        gsFileManager::open("poisson2d_exact.pvd");
         //! [Plot in Paraview]
     }
     else
