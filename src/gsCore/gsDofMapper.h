@@ -221,6 +221,9 @@ public:
     /// Mark a local dof \a i of patch \a k as tagged
     void markTagged(index_t i, index_t k, index_t comp = 0);
 
+    /// Mark a global dof \a gl as tagged
+    void markTaggedGl(index_t gl, index_t comp = 0);
+
     /// Mark all coupled dofs as tagged
     void markCoupledAsTagged();
 
@@ -445,6 +448,9 @@ public:
 
     /// Returns the vector of tagged (not eliminated) dofs.
     const std::vector<index_t> & getTagged() const { return m_tagged; }
+
+    /// Returns the vector of tagged (not eliminated) dofs.
+    const std::vector<index_t> & getBoundary() const { return m_numElimDofs; }
 
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;

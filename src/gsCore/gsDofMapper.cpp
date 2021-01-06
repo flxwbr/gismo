@@ -173,6 +173,15 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
         m_tagged.insert(pos, t);
 }
 
+void gsDofMapper::markTaggedGl( index_t gl, index_t comp)
+{
+    //see gsSortedVector::push_sorted_unique
+    std::vector<index_t>::iterator pos = std::lower_bound(m_tagged.begin(), m_tagged.end(), gl );
+
+    if ( pos == m_tagged.end() || *pos != gl )// If not found
+        m_tagged.insert(pos, gl);
+}
+
 
 void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {

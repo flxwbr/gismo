@@ -13,6 +13,8 @@
 
 #pragma once
 
+# include <gsG1Basis/gsG1MultiBasis.h>
+
 namespace gismo
 {
 
@@ -72,6 +74,7 @@ public:
 
     // Evaluate on element.
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         gsG1MultiBasis<T> & g1MultiBasis,
                          const gsGeometry<T>    & geo,
                          gsMatrix<T>            & quNodes)
     {
@@ -84,8 +87,11 @@ public:
         //deriv2_into()
         //col(point) = B1_xx B2_yy B1_zz B_xy B1_xz B1_xy B2_xx ...
 
+        gsStopwatch clock;
+        clock.restart();
         // Evaluate basis functions on element
         basis.evalAllDers_into(md.points, 2, basisData);
+        //gsInfo << "Time Basis: " << clock.stop() << "\n";
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
@@ -93,18 +99,50 @@ public:
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
+        // Pascal
+        if (g1MultiBasis.nPatches() == 2) // TODO For now: only for two Patch domains
+        {
+            numg1Active = 0;
+            g1MultiBasis.active_into(md.points.col(0), g1actives, geo.id());
+            numg1Active = g1actives.rows();
+            if (g1actives.rows() > 0)
+            {
+                clock.restart();
+                g1MultiBasis.evalAllDers_into(md.points, 2, g1basisData, geo.id());
+
+                basisData[0].conservativeResize(basisData[0].rows() + g1basisData[0].rows(), basisData[0].cols());
+                basisData[0].bottomRows(g1basisData[0].rows()) = g1basisData[0];
+
+                basisData[1].conservativeResize(basisData[1].rows() + g1basisData[1].rows(), basisData[1].cols());
+                basisData[1].bottomRows(g1basisData[1].rows()) = g1basisData[1];
+
+                basisData[2].conservativeResize(basisData[2].rows() + g1basisData[2].rows(), basisData[2].cols());
+                basisData[2].bottomRows(g1basisData[2].rows()) = g1basisData[2];
+
+                numActive += numg1Active;
+                actives.conservativeResize(actives.rows() + g1actives.rows(), actives.cols());
+                actives.bottomRows(g1actives.rows()) = g1actives;
+                //gsInfo << "Time G1 Basis: " << clock.stop() << "\n";
+            }
+        }
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
         localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
 
-    inline void assemble(gsDomainIterator<T>    & ,
+    inline void assemble(gsDomainIterator<T>    &,
                          const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & basisVals  = basisData[0];
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
+
+        //gsInfo << "Basisvals: " << basisVals.col(0) << "\n";
+
+        //gsInfo << "basisGrads: " << basisGrads.col(0) << "\n";
+
+        //gsInfo << "basis2ndDerivs: " << basis2ndDerivs.col(0) << "\n";
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
@@ -129,7 +167,7 @@ public:
         system.mapColIndices(actives, patchIndex, actives);
 
         // Add contributions to the system matrix and right-hand side
-        system.push(localMat, localRhs, actives, eliminatedDofs[0], 0, 0);
+        system.pushWithTagged(localMat, localRhs, actives, eliminatedDofs[0], 0, 0); // TODO modify!!!
     }
 
     /*
@@ -191,6 +229,14 @@ protected:
     gsMatrix<T> localRhs;
 
     gsMapData<T> md;
+
+// Pascal
+protected:
+    // Basis values
+    std::vector<gsMatrix<T> > g1basisData;
+    gsMatrix<T>        physG1BasisLaplace;
+    gsMatrix<index_t> g1actives;
+    index_t numg1Active;
 };
 
 

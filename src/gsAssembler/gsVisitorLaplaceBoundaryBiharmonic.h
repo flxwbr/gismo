@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsG1Basis/gsG1MultiBasis.h>
+
 namespace gismo
 {
 
@@ -26,15 +28,15 @@ namespace gismo
  * Where v is the test function and \f[ \Gamma \f] is the boundary.
  */
 template <class T>
-class gsVisitorNeumannBiharmonic
+class gsVisitorLaplaceBoundaryBiharmonic
 {
 public:
 
-    gsVisitorNeumannBiharmonic(const gsPde<T> & , const boundary_condition<T> & s)
-    : neudata_ptr( s.function().get() ), side(s.side())
+    gsVisitorLaplaceBoundaryBiharmonic(const gsPde<T> & , const boundary_condition<T> & s, gsG1MultiBasis<T> g1MultiBasis)
+    : neudata_ptr( s.function().get() ), side(s.side()), m_g1MultiBasis(g1MultiBasis)
     { }
 
-    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s) :
+    gsVisitorLaplaceBoundaryBiharmonic(const gsFunction<T> & neudata, boxSide s) :
     neudata_ptr(&neudata), side(s)
     { }
 
@@ -89,6 +91,24 @@ public:
 
         // Evaluate the Neumann data
         neudata_ptr->eval_into(md.values[0], neuData);
+
+        if (m_g1MultiBasis.nPatches() == 2) // TODO For now: only for two Patch domains
+        {
+            numg1Active = 0;
+            m_g1MultiBasis.active_into(md.points.col(0), g1actives, geo.id());
+            numg1Active = g1actives.rows();
+            if (g1actives.rows() > 0)
+            {
+                m_g1MultiBasis.evalAllDers_into(md.points, 1, g1basisData, geo.id());
+
+                basisGrads.conservativeResize(basisGrads.rows() + g1basisData[1].rows(), basisGrads.cols());
+                basisGrads.bottomRows(g1basisData[1].rows()) = g1basisData[1];
+
+                numActive += numg1Active;
+                actives.conservativeResize(actives.rows() + g1actives.rows(), actives.cols());
+                actives.bottomRows(g1actives.rows()) = g1actives;
+            }
+        }
 
         // Initialize local matrix/rhs
         localRhs.setZero(numActive, neudata_ptr->targetDim() );
@@ -169,6 +189,15 @@ protected:
     gsMatrix<T> localRhs;
 
     gsMapData<T> md;
+
+    // Pascal
+protected:
+    gsG1MultiBasis<T> m_g1MultiBasis;
+    // Basis values
+    std::vector<gsMatrix<T> > g1basisData;
+    gsMatrix<T>        physG1BasisLaplace;
+    gsMatrix<index_t> g1actives;
+    index_t numg1Active;
 };
 
 
