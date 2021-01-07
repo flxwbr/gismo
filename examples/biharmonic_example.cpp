@@ -107,13 +107,13 @@ int main(int argc, char *argv[])
     }
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1);
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1), meshSize(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
              "\nDoFs: ";
     for (int r=0; r<=numRefine; ++r)
     {
         basis.uniformRefine(1,basis.maxCwiseDegree()-1); // TODO for now: r=p-1
-        //gsInfo << "Basis: " << basis.basis(0) << "\n";
+        meshSize[r] = basis.basis(0).getMinCellLength();
 
         bool test_g1 = false;
         if (geo.nPatches() == 2 && test_g1)
@@ -202,19 +202,24 @@ int main(int argc, char *argv[])
 #pragma omp parallel for
         for (index_t e = 0; e < 3; ++e)
         {
+            /*
             if (e == 0)
                 errorH2Semi = solField.distanceH2(solution, false);
             else if (e == 1)
                 errorH1Semi = solField.distanceH1(solution, false);
             else if (e == 2)
                 l2err[r] = solField.distanceL2(solution, false);
-
+            */
             if (e == 2)
             {
                 gsG1Norm<real_t> g1Norm(geo, basis, mpsol, g1Sol, solution);
                 g1Norm.compute();
-                gsInfo << "g1Norm: " << g1Norm.valueL2() << " : " << g1Norm.valueH1() << " : " << g1Norm.valueH2()
-                       << "\n";
+                //gsInfo << "g1Norm: " << g1Norm.valueL2() << " : " << g1Norm.valueH1() << " : " << g1Norm.valueH2()
+                //       << "\n";
+
+                l2err[r] = g1Norm.valueL2();
+                errorH1Semi = g1Norm.valueH1();
+                errorH2Semi = g1Norm.valueH2();
             }
         }
 
@@ -238,6 +243,8 @@ int main(int argc, char *argv[])
             gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                       "file containing the solution.\n";
     }
+
+    gsInfo << "Mesh size: " << meshSize << "\n";
 
     //! [Error and convergence rates]
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";

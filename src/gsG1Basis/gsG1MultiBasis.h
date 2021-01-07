@@ -368,6 +368,9 @@ void gsG1MultiBasis<T>::eval_into(const gsMatrix<T> & points, gsMatrix<T> & resu
     }
     // End compute gluing data
 
+    // Modify beta
+    beta.setZero(); // TODO
+
     basis_geo.evalSingle_into(idx_geo == 1 ? 0 : idx_geo + 1, points.row(1-dir),N_0); // u
     basis_geo.evalSingle_into(idx_geo,points.row(1-dir),N_1); // u
 
@@ -509,6 +512,10 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
     }
     // End compute gluing data
 
+    // TODO
+    beta.setZero();
+    der_beta.setZero();
+
     basis_geo.evalSingle_into(idx_geo == 1 ? 0 : idx_geo + 1, points.row(1-dir),N_0);
     basis_geo.evalSingle_into(idx_geo,points.row(1-dir),N_1);
 
@@ -555,7 +562,8 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
 template<class T>
 void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::vector<gsMatrix<T>> & result, index_t patchIdx)
 {
-    if (g1active.size() == 0)
+
+    if (g1active.size() == 0 )
     {
         gsMatrix<index_t> act_plus, act_minus;
         gsVector<index_t> vec;
@@ -675,9 +683,6 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
     real_t lambdaL = beta2(0,0)/alpha2(0,0);
     real_t lambdaR = beta2(0,1)/alpha2(0,1);
 
-
-    gsInfo << "beta2: " << beta2 << " : " << alpha2 << "\n";
-
     // ======== Determine bar{beta}^L ========
     beta.setZero(1, points.cols());
     der_beta.setZero(1, points.cols());
@@ -707,19 +712,10 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
     // Modify beta part 2
     gsMatrix<> ones;
     ones.setOnes(beta.rows(), beta.cols());
-    gsInfo << "beta: " << beta << "\n";
     beta = beta - lambdaL*(ones - points.row(dir)).cwiseProduct(alpha) - lambdaR*(points.row(dir)).cwiseProduct(alpha);
 
-    gsInfo << "beta2: " << beta << "\n";
-    gsInfo << "lambdaL: " << lambdaL << "\n";
-    gsInfo << "points.row(dir): " <<  points.row(dir) << "\n";
-    gsInfo << "alpha: " << alpha << "\n";
-
-    gsInfo << "lambdaR: " << lambdaR << "\n";
-
-
-    // TODO
-    der_beta.setZero();
+    der_beta = der_beta - lambdaL*(ones - points.row(dir)).cwiseProduct(der_alpha) - lambdaR*(points.row(dir)).cwiseProduct(der_alpha)
+            + lambdaL*alpha - lambdaR*alpha;
 
     // End compute gluing data
 
