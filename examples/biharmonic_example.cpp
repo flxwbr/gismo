@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         basis.uniformRefine(1,basis.maxCwiseDegree()-1); // TODO for now: r=p-1
         //gsInfo << "Basis: " << basis.basis(0) << "\n";
 
-        bool test_g1 = true;
+        bool test_g1 = false;
         if (geo.nPatches() == 2 && test_g1)
         {
             // Basis Test
@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
             gsInfo << "Result L - R" << result_L[0] - result_R[0] << "\n";
             //gsInfo << "Result Deriv L - Deriv R" << result_L[1] - result_R[1] << "\n";
             // END
+
 
             gsMatrix<> alpha_L, alpha_R, beta_L, beta_R, beta;
             g1MultiBasis.eval_alpha_S_into(points_L.row(1), alpha_L, 0);
