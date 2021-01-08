@@ -1267,7 +1267,7 @@ public:
 
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
-        for (index_t c = 0; c!= _u.dim(); c++)
+        for (index_t c = 0; c!= _u.dim(); c++) // for all components
         {
             for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
@@ -1281,10 +1281,9 @@ public:
                 }
                 else
                 {
-                    res.noalias() +=
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
-                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose().replicate(_u.dim(),1);
+                    res.row(c) += _u.fixedPart().at( map.global_to_bindex(ii) ) *
+                        _u.data().values[1]
+                        .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
             }
         }

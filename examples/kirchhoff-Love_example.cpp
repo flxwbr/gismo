@@ -1099,7 +1099,7 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1e0;
-        thickness = 1e0;
+        thickness = 1e-2;
         PoissonRatio = 0.0;
     }
     //! [set test case data]
@@ -1422,6 +1422,9 @@ int main(int argc, char *argv[])
         bc.container("Weak Clamped")
     );
 
+    // For Neumann conditions
+    A.assembleRhsBc(u * g_N * otangent(G).norm(), bc.neumannSides() );
+
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
@@ -1463,7 +1466,7 @@ int main(int argc, char *argv[])
     gsMatrix<> updateVector = solVector;
     if (nonlinear)
     {
-        index_t itMax = 10;
+        index_t itMax = 100;
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
@@ -1485,9 +1488,11 @@ int main(int argc, char *argv[])
                 , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
-            // For Neumann (same for Dirichlet/Nitche) conditions
-            //variable g_N = A.getBdrFunction(); //defined already before
-            // A.assembleRhsBc(u * g_N, bc.neumannSides() );
+            gsDebug<<"N = "<<ev.eval(N,pt)<<"\n";
+
+
+            // For Neumann conditions
+            A.assembleRhsBc(u * g_N * otangent(G).norm(), bc.neumannSides() );
 
             A.assembleLhsRhsBc
             (

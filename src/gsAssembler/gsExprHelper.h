@@ -48,9 +48,9 @@ private:
     DofMappers m_mappers;
 
     // geometry map
-    expr::gsGeometryMap<T> mapVar, mapVar2;
+    expr::gsGeometryMap<T> mapVar, mapVar2, mapVar3;
 public:
-    gsMapData<T> mapData, mapData2;
+    gsMapData<T> mapData, mapData2, mapData3;
 private:
 
     // mutable pair of variable and data,
@@ -103,6 +103,10 @@ public:
         {
             gsInfo << "mapVar2: "<< &mapData2 <<"\n";
         }
+        if ( mapVar3.isValid() ) // list ?
+        {
+            gsInfo << "mapVar3: "<< &mapData3 <<"\n";
+        }
 
         if ( mutVar.isValid() && 0!=mutData.flags)
         {
@@ -132,6 +136,7 @@ public:
     {
         mapData.clear();
         mapData2.clear();
+        mapData3.clear();
         mutData.clear();
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.clear();
@@ -188,8 +193,16 @@ public:
         }
         else
         {
-            mapVar2.registerData(mp, mapData2);
-            return mapVar2;
+            if (!mapVar2.isValid() )
+            {
+                mapVar2.registerData(mp, mapData2);
+                return mapVar2;
+            }
+            else
+            {
+                mapVar3.registerData(mp, mapData3);
+                return mapVar3;
+            }
         }
     }
 
@@ -203,6 +216,12 @@ public:
     {
         GISMO_ASSERT(mapVar2.isValid(), "The Geometry map2 is not initialized)");
         return mapVar2;
+    }
+
+    geometryMap getMap3() const
+    {
+        GISMO_ASSERT(mapVar3.isValid(), "The Geometry map2 is not initialized)");
+        return mapVar3;
     }
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
@@ -301,6 +320,7 @@ public:
     {
         mapData.flags = mflag | NEED_ACTIVE;
         mapData2.flags = mflag | NEED_ACTIVE;
+        mapData3.flags = mflag | NEED_ACTIVE;
         mutData.flags = fflag | NEED_ACTIVE;
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.flags = fflag | NEED_ACTIVE;
@@ -344,6 +364,14 @@ public:
             mapData2.flags |= NEED_VALUE;
             mapVar2.source().function(patchIndex).computeMap(mapData2);
             mapData2.patchId = patchIndex;
+        }
+        if ( mapVar3.isValid() ) // list ?
+        {
+            mapData3.points = points();
+            //gsDebugVar("MAPDATA-------***************");
+            mapData3.flags |= NEED_VALUE;
+            mapVar3.source().function(patchIndex).computeMap(mapData3);
+            mapData3.patchId = patchIndex;
         }
         if ( mutVar.isValid() && 0!=mutData.flags)
         {
