@@ -270,9 +270,11 @@ void gsG1MultiBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     switch(n)
     {
         case 0:
+            gsInfo << "I WAS HERE \n";
             eval_into(u, result[0], patchIdx);
             break;
         case 1:
+            gsInfo << "I WAS HERE 2 \n";
             //eval_into (u, result[0], patchIdx);
             eval_deriv_into(u, result, patchIdx);
             break;
@@ -474,14 +476,14 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
     for (index_t i = 0; i < uv.cols(); i++)
     {
         P0.jacobian_into(uv.col(i), ev);
-        alpha(0, i) = 1.0 * ev.determinant();
+        alpha(0, i) = (patchIdx == 0 ? -1 : 1) * ev.determinant();
 
         P0.deriv2_into(uv.col(i), ev2);
         if (dir == 1)
-            der_alpha(0, i) = 1.0 * (ev2(2,0)*ev(1,1) + ev2(4,0)*ev(0,0) -
+            der_alpha(0, i) = (patchIdx == 0 ? -1 : 1) * (ev2(2,0)*ev(1,1) + ev2(4,0)*ev(0,0) -
                                         ev2(1,0)*ev(1,0) - ev2(5,0)*ev(0,1));
         else if (dir == 0)
-            der_alpha(0, i) = 1.0 * (ev2(0,0)*ev(1,1) + ev2(5,0)*ev(0,0) -
+            der_alpha(0, i) = (patchIdx == 0 ? -1 : 1) * (ev2(0,0)*ev(1,1) + ev2(5,0)*ev(0,0) -
                                         ev2(2,0)*ev(1,0) - ev2(3,0)*ev(0,1));
     }
 
@@ -496,25 +498,61 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
         P0.jacobian_into(uv.col(i),ev);
         D0 = ev.col(dir);
         real_t D1 = 1/ D0.norm();
-        beta(0,i) = - 1.0 * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
         P0.deriv2_into(uv.col(i), ev2);
         D1 = 1/ D0.squaredNorm();
         real_t D2 = D0.squaredNorm();
         if (dir == 1)
-            der_beta(0,i) = - 1.0 * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
                                                        ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
                                                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
         else if (dir == 0)
-            der_beta(0,i) = - 1.0 * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
                                                        ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
                                                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
     }
     // End compute gluing data
 
-    // TODO
-    beta.setZero();
-    der_beta.setZero();
+
+    // ======== For modifying beta ========
+    gsMatrix<T> zeroOne(2,2);
+    zeroOne.setIdentity();
+
+    // For modifying beta
+    gsMatrix<T> alpha2, beta2;
+    alpha2.setZero(1, zeroOne.cols());
+    beta2.setZero(1, zeroOne.cols());
+
+    const gsGeometry<> & PL = m_mp.patch(0); // Only in two Patch case TODO
+    const gsGeometry<> & PR = m_mp.patch(1); // Only in two Patch case TODO
+
+    gsMatrix<T> evZeroOne;
+    PL.jacobian_into(zeroOne.col(0), evZeroOne);
+    alpha2(0,0) = -1 * evZeroOne.determinant(); // alpha^L (0)
+
+    D0 = evZeroOne.col(1); // dir of interface == 1
+    real_t D1 = 1/ D0.norm();
+    beta2(0,0) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
+
+
+    PR.jacobian_into(zeroOne.col(1), evZeroOne);
+    alpha2(0,1) = evZeroOne.determinant(); // alpha^R (1)
+
+    D0 = evZeroOne.col(1); // dir of interface == 1
+    D1 = 1/ D0.norm();
+    beta2(0,1) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
+
+    real_t lambdaL = beta2(0,0)/alpha2(0,0);
+    real_t lambdaR = beta2(0,1)/alpha2(0,1);
+
+    // Modify beta part 2
+    gsMatrix<> ones;
+    ones.setOnes(beta.rows(), beta.cols());
+    beta = beta - lambdaL*(ones - points.row(dir)).cwiseProduct(alpha) - lambdaR*(points.row(dir)).cwiseProduct(alpha);
+
+    der_beta = der_beta - lambdaL*(ones - points.row(dir)).cwiseProduct(der_alpha) - lambdaR*(points.row(dir)).cwiseProduct(der_alpha)
+               + lambdaL*alpha - lambdaR*alpha;
 
     basis_geo.evalSingle_into(idx_geo == 1 ? 0 : idx_geo + 1, points.row(1-dir),N_0);
     basis_geo.evalSingle_into(idx_geo,points.row(1-dir),N_1);
@@ -550,10 +588,10 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
         basis_pm[1].evalSingle_into(bfID, points.row(dir), N_j_minus);
         basis_pm[1].derivSingle_into(bfID, points.row(dir),der_N_j_minus);
 
-        result[0].row(g1active[0].rows() + i_minus) =  (patchIdx == 0 ? -1 : 1) * alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+        result[0].row(g1active[0].rows() + i_minus) =  alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
 
-        result[1].row(2*g1active[0].rows() + 2*i_minus + 1-dir) = (patchIdx == 0 ? -1 : 1) * alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
-        result[1].row(2*g1active[0].rows() + 2*i_minus + dir) = (patchIdx == 0 ? -1 : 1) * (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
+        result[1].row(2*g1active[0].rows() + 2*i_minus + 1-dir) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
+        result[1].row(2*g1active[0].rows() + 2*i_minus + dir) = (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
     }
     // End minus basis
 
@@ -618,7 +656,7 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
             der3_N_i_plus;
 
     // Compute gluing data
-    gsMatrix<> uv, ev, ev2;
+    gsMatrix<> uv, ev, ev2, ev3;
 
     if (idx_geo==1)
     {
@@ -636,6 +674,7 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
 
     alpha.setZero(1, points.cols());
     der_alpha.setZero(1, points.cols());
+    der2_alpha.setZero(1, points.cols());
     for (index_t i = 0; i < uv.cols(); i++)
     {
         P0.jacobian_into(uv.col(i), ev);
@@ -648,6 +687,16 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
         else if (dir == 0)
             der_alpha(0, i) = (patchIdx == 0 ? -1 : 1) * (ev2(0,0)*ev(1,1) + ev2(5,0)*ev(0,0) -
                 ev2(2,0)*ev(1,0) - ev2(3,0)*ev(0,1));
+
+        std::vector<gsMatrix<>> ders;
+        m_mp.patch(patchIdx).basis().evalAllDersFunc_into(uv.col(i),m_mp.patch(patchIdx).coefs(),4,ders); // TODO before
+        ev3 = ders[3];
+
+        if (dir == 1)
+            der2_alpha(0,i) = (patchIdx == 0 ? -1 : 1) * (-2 * ev2(5,0)*ev2(1,0) + 2 * ev2(2,0)*ev2(4,0) +
+                    ev(1,1)*ev3(3,0) - ev(0,1)*ev3(7,0) - ev(1,0)*ev3(1,0) +
+                    ev(0,0)*ev3(5,0));
+
     }
 
     // ======== For modifying beta ========
@@ -686,28 +735,51 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
     // ======== Determine bar{beta}^L ========
     beta.setZero(1, points.cols());
     der_beta.setZero(1, points.cols());
+    der2_beta.setZero(1, points.cols());
     for(index_t i = 0; i < uv.cols(); i++)
     {
         P0.jacobian_into(uv.col(i),ev);
         D0 = ev.col(dir);
         real_t D1 = 1/ D0.norm();
-        beta(0,i) = (patchIdx == 0 ? -1 : 1) * 1.0 * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
         P0.deriv2_into(uv.col(i), ev2);
         D1 = 1/ D0.squaredNorm();
         real_t D2 = D0.squaredNorm();
         if (dir == 1)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * 1.0 * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
                 ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
                 (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
         else if (dir == 0)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * 1.0 * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
                 ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
                 (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
+
+        std::vector<gsMatrix<>> ders;
+        m_mp.patch(patchIdx).basis().evalAllDersFunc_into(uv.col(i),m_mp.patch(patchIdx).coefs(),4,ders); // TODO before
+        ev3 = ders[3];
+
+        if (dir == 1)
+            der2_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * D1 * (
+                    -4 * D2 * (ev(0,1)*ev2(2,0) + ev(1,1)*ev2(5,0) +
+                    ev(0,0)*ev2(1,0) + ev(1,0)*ev2(4,0)) *
+                    (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0))
+                    +
+                    D2 * D2 * (2 * ev2(2,0)*ev2(1,0) + 2 * ev2(5,0)*ev2(4,0) +
+                    ev(0,1)*ev3(3,0) + ev(1,1)*ev3(7,0) +
+                    ev(0,0)*ev3(1,0) + ev(1,0)*ev3(4,0))
+                    +
+                    (ev(0,0)*ev(0,1) + ev(1,0)*ev(1,1)) *
+                    (8 * (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0)) *
+                    (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0)) -
+                    2 * (ev(0,1)*ev(0,1) + ev(1,1)*ev(1,1)) *
+                    (ev2(1,0)*ev2(1,0) + ev2(4,0)*ev2(4,0) +
+                    ev(0,1)*ev3(1,0) + ev(1,1)*ev3(5,0))
+                    )
+                    );
     }
 
-    der2_beta.setZero(1, points.cols()); // TODO Change in Non-AS case
-    der2_alpha.setZero(1, points.cols());
+    gsInfo << "Beta: " << der2_beta << "\n";
 
     // Modify beta part 2
     gsMatrix<> ones;
@@ -716,6 +788,9 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
 
     der_beta = der_beta - lambdaL*(ones - points.row(dir)).cwiseProduct(der_alpha) - lambdaR*(points.row(dir)).cwiseProduct(der_alpha)
             + lambdaL*alpha - lambdaR*alpha;
+
+    der2_beta = der2_beta - lambdaL*((ones - points.row(dir)).cwiseProduct(der2_alpha) - 2.0*der_alpha) -
+            lambdaR*((points.row(dir)).cwiseProduct(der2_alpha) + 2.0*der_alpha);
 
     // End compute gluing data
 

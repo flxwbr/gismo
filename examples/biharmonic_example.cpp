@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
             bcInfo2.addCondition(*bit,  condition_type::neumann, &sol1der);
     }
 
+    gsStopwatch clock;
+
     //! [Solver loop]
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1), meshSize(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
         basis.uniformRefine(1,basis.maxCwiseDegree()-1); // TODO for now: r=p-1
         meshSize[r] = basis.basis(0).getMinCellLength();
 
-        bool test_g1 = false;
+        bool test_g1 = true;
         if (geo.nPatches() == 2 && test_g1)
         {
             // Basis Test
@@ -127,8 +129,8 @@ int main(int argc, char *argv[])
 
             gsVector<> vec;
             vec.setLinSpaced(numPoints, 0.01, 0.99);
-            points_L.row(1) = vec.transpose(); // v
-            points_R.row(1) = vec.transpose(); // v
+            points_L.row(1) = vec.transpose().setZero(); // v
+            points_R.row(1) = vec.transpose().setZero(); // v
 
             gsG1MultiBasis<real_t> g1MultiBasis(geo, basis); // Maybe earlier? Only need for #patches>2
             g1MultiBasis.eval_deriv_deriv2_into(points_L, result_L, 0);
@@ -171,14 +173,18 @@ int main(int argc, char *argv[])
 
         gsInfo << BiharmonicAssembler.numDofs() <<std::flush;
 
+        clock.restart();
         BiharmonicAssembler.assemble();
+        gsInfo << " " << clock.stop() << " ";
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
+        clock.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
         solver.analyzePattern(BiharmonicAssembler.matrix());
         solver.factorize(BiharmonicAssembler.matrix());
         gsMatrix<> solVector = solver.solve(BiharmonicAssembler.rhs());
+        gsInfo << " " << clock.stop() << " ";
 
         //gsInfo << "rhs: " << BiharmonicAssembler.matrix().toDense() << "\n";
         //gsInfo << "rhs: " << BiharmonicAssembler.rhs() << "\n";
