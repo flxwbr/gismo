@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
         basis.uniformRefine(1,basis.maxCwiseDegree()-1); // TODO for now: r=p-1
         meshSize[r] = basis.basis(0).getMinCellLength();
 
-        bool test_g1 = true;
+        bool test_g1 = false;
         if (geo.nPatches() == 2 && test_g1)
         {
             // Basis Test
