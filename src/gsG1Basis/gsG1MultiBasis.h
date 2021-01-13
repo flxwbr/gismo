@@ -636,6 +636,12 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
 template<class T>
 void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::vector<gsMatrix<T>> & result, index_t patchIdx)
 {
+/*
+    index_t p_size = 5;
+    gsVector<> vec;
+    vec.setLinSpaced(p_size,0,1);
+
+*/
 
     if (g1active.size() == 0 )
     {
@@ -699,11 +705,13 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
     {
         uv.setZero(2,points.cols());
         uv.row(dir) = points.row(dir);
+
     }
     else if (idx_geo==basis_geo.size() - 2)
     {
         uv.setOnes(2,points.cols());
         uv.row(dir) = points.row(dir);
+
     }
 
     // ======== Determine bar{alpha^(S)} ========
@@ -726,13 +734,13 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
                 ev2(2,0)*ev(1,0) - ev2(3,0)*ev(0,1));
 
         std::vector<gsMatrix<>> ders;
-        m_mp.patch(patchIdx).basis().evalAllDersFunc_into(uv.col(i),m_mp.patch(patchIdx).coefs(),4,ders); // TODO before
+        m_mp.patch(patchIdx).basis().evalAllDersFunc_into(uv.col(i),m_mp.patch(patchIdx).coefs(),3,ders); // TODO before
         ev3 = ders[3];
 
         if (dir == 1)
             der2_alpha(0,i) = (patchIdx == 0 ? -1 : 1) * (-2 * ev2(5,0)*ev2(1,0) + 2 * ev2(2,0)*ev2(4,0) +
-                    ev(1,1)*ev3(3,0) - ev(0,1)*ev3(7,0) - ev(1,0)*ev3(1,0) +
-                    ev(0,0)*ev3(5,0));
+                    ev(1,1)*ev3(2,0) - ev(0,1)*ev3(6,0) - ev(1,0)*ev3(3,0) +
+                    ev(0,0)*ev3(7,0));
 
     }
 
@@ -803,22 +811,20 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
                     (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0))
                     +
                     D2 * D2 * (2 * ev2(2,0)*ev2(1,0) + 2 * ev2(5,0)*ev2(4,0) +
-                    ev(0,1)*ev3(3,0) + ev(1,1)*ev3(7,0) +
-                    ev(0,0)*ev3(1,0) + ev(1,0)*ev3(5,0))
+                    ev(0,1)*ev3(2,0) + ev(1,1)*ev3(6,0) +
+                    ev(0,0)*ev3(3,0) + ev(1,0)*ev3(7,0))
                     +
                     (ev(0,0)*ev(0,1) + ev(1,0)*ev(1,1)) *
                     (8 * (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0)) *
                     (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0)) -
                     2 * (ev(0,1)*ev(0,1) + ev(1,1)*ev(1,1)) *
                     (ev2(1,0)*ev2(1,0) + ev2(4,0)*ev2(4,0) +
-                    ev(0,1)*ev3(1,0) + ev(1,1)*ev3(5,0))
+                    ev(0,1)*ev3(3,0) + ev(1,1)*ev3(7,0))
                     )
                     );
     }
 
     //gsInfo << "Beta: " << der2_beta << "\n";
-    gsInfo << "points: " << der_beta(0,4) << " : "<< der_beta(0,0) << " : "<< uv(dir,4) << " : "<< uv(dir,0)<< "\n";
-    gsInfo << "beta 2: " << der2_beta(0,0) << " : " << der2_beta(0,4) << "\n";
 
     // Modify beta part 2
     gsMatrix<> ones;
@@ -832,6 +838,8 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
             lambdaR*((points.row(dir)).cwiseProduct(der2_alpha) + 2.0*der_alpha);
 
     // End compute gluing data
+
+
 
     basis_geo.evalSingle_into(idx_geo == 1 ? 0 : idx_geo + 1, points.row(1-dir),N_0);
     basis_geo.evalSingle_into(idx_geo,points.row(1-dir),N_1);
