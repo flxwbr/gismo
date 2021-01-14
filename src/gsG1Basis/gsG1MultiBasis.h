@@ -366,7 +366,7 @@ void gsG1MultiBasis<T>::eval_into(const gsMatrix<T> & points, gsMatrix<T> & resu
 
         D0 = ev.col(dir);
         real_t D1 = 1/ D0.norm();
-        beta(0,i) = (patchIdx == 0 ? -1 : 1) *  D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        beta(0,i) = (patchIdx == 0 ? 1 : -1) *  D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
     }
 
@@ -390,7 +390,7 @@ void gsG1MultiBasis<T>::eval_into(const gsMatrix<T> & points, gsMatrix<T> & resu
 
     D0 = evZeroOne.col(1); // dir of interface == 1
     real_t D1 = 1/ D0.norm();
-    beta2(0,0) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
+    beta2(0,0) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
 
 
     PR.jacobian_into(zeroOne.col(1), evZeroOne);
@@ -398,7 +398,7 @@ void gsG1MultiBasis<T>::eval_into(const gsMatrix<T> & points, gsMatrix<T> & resu
 
     D0 = evZeroOne.col(1); // dir of interface == 1
     D1 = 1/ D0.norm();
-    beta2(0,1) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
+    beta2(0,1) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
 
     real_t lambdaL = beta2(0,0)/alpha2(0,0);
     real_t lambdaR = beta2(0,1)/alpha2(0,1);
@@ -534,17 +534,17 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
         P0.jacobian_into(uv.col(i),ev);
         D0 = ev.col(dir);
         real_t D1 = 1/ D0.norm();
-        beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
         P0.deriv2_into(uv.col(i), ev2);
         D1 = 1/ D0.squaredNorm();
         real_t D2 = D0.squaredNorm();
         if (dir == 1)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
                                                        ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
                                                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
         else if (dir == 0)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
                                                        ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
                                                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
     }
@@ -569,7 +569,7 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
 
     D0 = evZeroOne.col(1); // dir of interface == 1
     real_t D1 = 1/ D0.norm();
-    beta2(0,0) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
+    beta2(0,0) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
 
 
     PR.jacobian_into(zeroOne.col(1), evZeroOne);
@@ -577,7 +577,7 @@ void gsG1MultiBasis<T>::eval_deriv_into(const gsMatrix<T> & points, std::vector<
 
     D0 = evZeroOne.col(1); // dir of interface == 1
     D1 = 1/ D0.norm();
-    beta2(0,1) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
+    beta2(0,1) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
 
     real_t lambdaL = beta2(0,0)/alpha2(0,0);
     real_t lambdaR = beta2(0,1)/alpha2(0,1);
@@ -764,7 +764,7 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
     gsVector<> D0(d);
     D0 = evZeroOne.col(1); // dir of interface == 1
     real_t D1 = 1/ D0.norm();
-    beta2(0,0) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
+    beta2(0,0) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^L (0)
 
 
     PR.jacobian_into(zeroOne.col(1), evZeroOne);
@@ -772,7 +772,7 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
 
     D0 = evZeroOne.col(1); // dir of interface == 1
     D1 = 1/ D0.norm();
-    beta2(0,1) = D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
+    beta2(0,1) = -1 * D1 * D1 * evZeroOne.col(1).transpose() * evZeroOne.col(0); // beta^R (1)
 
     real_t lambdaL = beta2(0,0)/alpha2(0,0);
     real_t lambdaR = beta2(0,1)/alpha2(0,1);
@@ -786,17 +786,17 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
         P0.jacobian_into(uv.col(i),ev);
         D0 = ev.col(dir);
         real_t D1 = 1/ D0.norm();
-        beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
         P0.deriv2_into(uv.col(i), ev2);
         D1 = 1/ D0.squaredNorm();
         real_t D2 = D0.squaredNorm();
         if (dir == 1)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
                 ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
                 (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
         else if (dir == 0)
-            der_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+            der_beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
                 ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
                 (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
 
@@ -805,7 +805,7 @@ void gsG1MultiBasis<T>::eval_deriv_deriv2_into(const gsMatrix<T> & points, std::
         ev3 = ders[3];
 
         if (dir == 1)
-            der2_beta(0,i) = (patchIdx == 0 ? -1 : 1) * D1 * D1 * D1 * (
+            der2_beta(0,i) = (patchIdx == 0 ? 1 : -1) * D1 * D1 * D1 * (
                     -4 * D2 * (ev(0,1)*ev2(2,0) + ev(1,1)*ev2(5,0) +
                     ev(0,0)*ev2(1,0) + ev(1,0)*ev2(4,0)) *
                     (ev(0,1)*ev2(1,0) + ev(1,1)*ev2(4,0))
