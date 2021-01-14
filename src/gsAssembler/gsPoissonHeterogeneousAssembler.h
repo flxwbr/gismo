@@ -227,8 +227,6 @@ protected:
 
 public:
     // TODO: move this at some point in the future to gsAssembler
-    ///////////////////////////////// Christoph's push routine////////////////////////////////////////
-    /*
     template<class DGVisitor>
     void push(const std::vector<boundaryInterface> & bIs)
     {
@@ -302,75 +300,6 @@ public:
                 {
                     domIt2->next();
                 }
-
-            }
-        }
-    }*/
-
-    ///////////////////////////////// Mine ////////////////////////////////////////
-    template<class DGVisitor>
-    void push(const std::vector<boundaryInterface> & bIs)
-    {
-
-        for(typename gsMultiPatch<T>::const_iiterator  bI= bIs.begin(); bI!= bIs.end();++bI)
-        {
-            const boundaryInterface & iFace =
-                    ( m_bases[0][bI->first() .patch].numElements(bI->first() .side() ) <
-                      m_bases[0][bI->second().patch].numElements(bI->second().side() ) ?
-                      bI->getInverse() : *bI );
-            DGVisitor visitor(*m_pde_ptr, iFace.first(), iFace.second());
-
-            //gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], *bI);
-            gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], iFace);
-
-            const int patch1      = iFace.first().patch;
-            const int patch2      = iFace.second().patch;
-            const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
-            const gsBasis<T> & B2 = m_bases[0][patch2];
-
-            gsQuadRule<T> QuRule ; // Quadrature rule
-            gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
-            gsVector<T> quWeights;         // Mapped weights
-            // Evaluation flags for the Geometry map
-            unsigned evFlags(0);
-
-            // Initialize
-            visitor.initialize(B1, B2, QuRule, evFlags);
-
-            // Initialize geometry evaluators
-            typename gsGeometryEvaluator<T>::uPtr geoEval1(getEvaluator(evFlags, m_pde_ptr->domain()[patch1]));
-            typename gsGeometryEvaluator<T>::uPtr geoEval2(getEvaluator(evFlags, m_pde_ptr->domain()[patch2]));
-
-            // Initialize domain element iterators
-            //typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( iFace.first() .side() );
-            //typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( iFace.second().side() );
-            typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
-
-
-            int count = 0;
-            // iterate over all boundary grid cells on the "left"
-            for (; domIt->good(); domIt->next() )
-            {
-                count++;
-                // Get the element of the other side in domIter2
-                //domIter1->adjacent( iFace.orient, *domIter2 );
-
-                // Compute the quadrature rule on both sides
-                QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
-                interfaceMap.eval_into(quNodes1,quNodes2);
-
-                // Perform required evaluations on the quadrature nodes
-                visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
-
-                // Assemble on element
-                visitor.assemble(*domIt,*domIt, *geoEval1, *geoEval2, quWeights);
-
-                // Push to global patch matrix (m_rhs is filled in place)
-
-                //this just works for poisson (second one is better) -- FIXME
-                visitor.localToGlobal(m_system.dofMappers()[0],m_ddof[0], patch1, patch2, m_system.matrix(), m_system.rhs());
-
-                //visitor.localToGlobal(patch1, patch2, m_ddof, m_system); // USE THIS: TODO: implement in SparseSystem
 
             }
         }
