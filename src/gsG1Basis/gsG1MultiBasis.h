@@ -270,11 +270,9 @@ void gsG1MultiBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     switch(n)
     {
         case 0:
-            gsInfo << "I WAS HERE \n";
             eval_into(u, result[0], patchIdx);
             break;
         case 1:
-            gsInfo << "I WAS HERE 2 \n";
             //eval_into (u, result[0], patchIdx);
             eval_deriv_into(u, result, patchIdx);
             break;
