@@ -27,6 +27,8 @@ Author(s): S. Matculevich
 #include <gsSolver/gsIterativeSolver.h>
 #include <gsSolver/gsSolverUtils.h>
 
+#include <gsAssembler/gsJumpCorrection.h>
+
 namespace gismo {
 
     template<unsigned d>
@@ -763,6 +765,18 @@ namespace gismo {
         gsInfo << " Assemble and solve the big system \n";
         gsInfo << "---------------------------------------------------------------------------------\n";
         // TODO: Subtract the part related to the jump of y
+        // Substract the jump at each interface
+        for (size_t numInt = 0; numInt < this->patches.nInterfaces(); numInt++)
+        {
+            const boundaryInterface & item = this->patches.interfaces()[numInt];
+
+            gsJumpCorrection<real_t> jumpCorrection(this->patches, basisY, item);
+
+        }
+
+
+
+
         gsSparseEntries<> entries;
         for (index_t i = 0; i < iterMajOpt; i++)
         {
@@ -1881,8 +1895,8 @@ namespace gismo {
             solverLU.compute(yM);
             if(solverLU.succeed())
                 yVectorIter = solverLU.solve(yRhs);
-            else
-                GISMO_ERROR("LU decomposition not successful");
+            //else
+                //GISMO_ERROR("LU decomposition not successful");
             //this->gsSetYVector(yVectorIter);
 
         } else{
