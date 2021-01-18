@@ -78,6 +78,11 @@ int main(int argc, char *argv[])
             string_geo = "planar/two_squares_curved.xml";
             initDegree = 3;
             break;
+
+        case 10: // 2 Patch
+            string_geo = "planar/two_squaresA.xml";
+            initDegree = 1;
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -133,8 +138,8 @@ int main(int argc, char *argv[])
             points_R.row(1) = vec.transpose().setZero(); // v
 
             gsG1MultiBasis<real_t> g1MultiBasis(geo, basis); // Maybe earlier? Only need for #patches>2
-            g1MultiBasis.eval_deriv_deriv2_into(points_L, result_L, 0);
-            g1MultiBasis.eval_deriv_deriv2_into(points_R, result_R, 1);
+            g1MultiBasis.evalAllDers_into(points_L, 1, result_L, 0);
+            g1MultiBasis.evalAllDers_into(points_R, 1, result_R, 1);
 
             gsInfo << "Result Deriv 1 L : " << result_L[1] << "\n";
             gsInfo << "Result Deriv 1 R : " << result_R[1] << "\n";
@@ -144,25 +149,26 @@ int main(int argc, char *argv[])
             // END
 
 
-            gsMatrix<> alpha_L, alpha_R, beta_L, beta_R, beta;
-            g1MultiBasis.eval_alpha_S_into(points_L.row(1), alpha_L, 0);
-            g1MultiBasis.eval_alpha_S_into(points_R.row(1), alpha_R, 1);
+            std::vector<gsMatrix<>> alpha_L, alpha_R, beta_L, beta_R;
+            gsMatrix<> beta;
+            g1MultiBasis.evalAllDers_alpha_S_into(points_L.row(1), 0, alpha_L, 0, 2);
+            g1MultiBasis.evalAllDers_alpha_S_into(points_R.row(1),0, alpha_R, 1, 1);
 
-            g1MultiBasis.eval_beta_S_into(points_L.row(1), beta_L, 0);
-            g1MultiBasis.eval_beta_S_into(points_R.row(1), beta_R, 1);
+            g1MultiBasis.evalAllDers_beta_S_into(points_L.row(1),0, beta_L, 0, 2);
+            g1MultiBasis.evalAllDers_beta_S_into(points_R.row(1),0, beta_R, 1, 1);
 
             g1MultiBasis.eval_beta_into(points_L.row(1), beta);
 
-            gsInfo << "alpha_L: " << alpha_L << "\n";
-            gsInfo << "alpha_R: " << alpha_R << "\n";
-            gsInfo << "beta_L " << beta_L << "\n";
-            gsInfo << "beta_R: " << beta_R << "\n";
-            gsInfo << "Beta: " << beta << "\n";
+            gsInfo << "alpha_L: " << alpha_L[0] << "\n";
+            gsInfo << "alpha_R: " << alpha_R[0] << "\n";
+            gsInfo << "beta_L " << beta_L[0] << "\n";
+            gsInfo << "beta_R: " << beta_R[0] << "\n";
+            gsInfo << "Beta: " << beta[0] << "\n";
 
-            gsInfo << "Gluing data condition: " << alpha_L.cwiseProduct(beta_R) + alpha_R.cwiseProduct(beta_L) - beta << "\n";
+            gsInfo << "Gluing data condition: " << alpha_L[0].cwiseProduct(beta_R[0]) + alpha_R[0].cwiseProduct(beta_L[0]) - beta << "\n";
             gsInfo << "G1 condition: \n";
             for (index_t row_i = 0; row_i < result_L[1].rows(); row_i+=2)
-                gsInfo << result_L[1].row(row_i) *  alpha_R.transpose() - result_R[1].row(row_i) * alpha_L.transpose() << " ";
+                gsInfo << result_L[1].row(row_i) *  alpha_R[0].transpose() - result_R[1].row(row_i) * alpha_L[0].transpose() << " ";
             gsInfo << "\n";
         }
 
@@ -190,7 +196,7 @@ int main(int argc, char *argv[])
         //gsInfo << "rhs: " << BiharmonicAssembler.rhs() << "\n";
         //gsInfo << "Vector: " << solVector << "\n";
 
-        gsInfo<< "." <<std::flush; // Linear solving done
+        gsInfo<< "." <<std::flush << "\n"; // Linear solving done
 
 
         //Reconstruct solution

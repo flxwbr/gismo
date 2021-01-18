@@ -75,7 +75,7 @@ namespace gismo
             // G1 solution
             std::vector<gsMatrix<T>> eval_deriv_g1;
             //g1MultiBasis.eval_into(quNodes, eval_g1, geometry.id());
-            g1MultiBasis.eval_deriv_deriv2_into(quNodes, eval_deriv_g1, geometry.id());
+            g1MultiBasis.evalAllDers_into(quNodes, 2, eval_deriv_g1, geometry.id());
 
             for (index_t i = 0; i < eval_deriv_g1[0].rows(); i++)
             {

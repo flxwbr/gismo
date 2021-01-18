@@ -663,14 +663,14 @@ void gsBiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_interi
 
         // Here add g1 basis
         //eval_field.setZero();
-        gsMatrix<T> eval_g1;
-        g1MultiBasis.eval_into(pts, eval_g1, pp);
+        std::vector<gsMatrix<T>> eval_g1;
+        g1MultiBasis.evalAllDers_into(pts, 0, eval_g1, pp);
 
         gsDofMapper mapper = m_system.rowMapper(0);
-        for (index_t i = 0; i < eval_g1.rows(); i++)
+        for (index_t i = 0; i < eval_g1[0].rows(); i++)
         {
             if (mapper.is_free(i+ m_bases[0].basis(pp).size(), pp))
-                eval_field += eval_g1.row(i) * result(
+                eval_field += eval_g1[0].row(i) * result(
                         mapper.index(i + m_bases[0].basis(pp).size(), pp),0); // Only 1 dim solution!!!
 
             // TODO Add here bdy
