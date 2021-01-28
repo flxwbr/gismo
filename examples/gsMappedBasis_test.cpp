@@ -37,8 +37,7 @@ int main(int argc, char *argv[])
     int numRefine  = 3;
     int qRule  = 1;
 
-    gsFileManager::addSearchPaths(gsFileManager::getHomePath() + "/dbox/Florian_ThreePatches/star");
-    std::string fn("star3_");
+    std::string fn("msplines/star3_");
 
     gsCmdLine cmd("Example using mapped spline bases.");
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
@@ -106,10 +105,10 @@ int main(int argc, char *argv[])
             bb2.init(mb,cf);
         if (3==d)
             bb3.init(mb,cf);
-            
+
 
         //u.setup(bc, dirichlet::interpolation, 0);
-        
+
         // Initialize the system
         A.initSystem();
 
@@ -135,9 +134,9 @@ int main(int argc, char *argv[])
         l2err[r]= math::sqrt( ev.integral( (f - s).sqNorm()*meas(G) ) / ev.integral(f.sqNorm()*meas(G)) );
 
         h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
-        
+
         linferr[r] = ev.max( f-s ) / ev.max(f);
-        
+
         gsInfo<< ". " <<std::flush; // Error computations done
     }
     //! [Solver loop]
@@ -175,6 +174,10 @@ int main(int argc, char *argv[])
         ev.writeParaview( f, G, "solution_ex");
         //ev.writeParaview( grad(f), G, "solution_ex_grad");
         ev.writeParaview( (f-s), G, "error_pointwise");
+
+
+
+        gsWriteParaview( mp, "mp",100,true);
         gsFileManager::open("error_pointwise.pvd");
     }
     //! [Export visualization in ParaView]
